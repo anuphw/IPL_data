@@ -1,9 +1,13 @@
 ---
 title: "Player performance different metrics"
 author: "Anup Walvekar"
+<<<<<<< HEAD
 output:  
   html_document:  
         keep_md: true
+=======
+output: github_document
+>>>>>>> 1a75b0d0f70bcb32361175e8dc3d8a461f6c0696
 ---
 # Better Economy Rate
 Economy Rate (ER) is one of the vary important statistic to evaluate a bowler. The definition of ER is the average number of runs given away by the bowler in one over. This [Cricinfo article](http://www.espncricinfo.com/blogs/content/story/1084584.html) argues how this traditional definition of ER is not a good measure of player quality. The gist of the argument is that the traditional definition ignores the context of the game, i.e. the run rate during a match. So instead of calculating ER as the average number of runs per over, we also need to introduce a way to incorporate the context. They introduce the concept of Economy Rate differential (ERx) in the article, which is the average of player economy rate and innings run rate. There are couple of problems with this definition:
