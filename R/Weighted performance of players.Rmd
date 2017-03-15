@@ -1,22 +1,24 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "Player performance different metrics"
+author: "Anup Walvekar"
+output:
+  html_document: default
+  html_notebook: default
 ---
+# Better Economy Rate
+Economy Rate (ER) is one of the vary important statistic to evaluate a bowler. The definition of ER is the average number of runs given away by the bowler in one over. This [Cricinfo article](http://www.espncricinfo.com/blogs/content/story/1084584.html) argues how this traditional definition of ER is not a good measure of player quality. The gist of the argument is that the traditional definition ignores the context of the game, i.e. the run rate during a match. So instead of calculating ER as the average number of runs per over, we also need to introduce a way to incorporate the context. They introduce the concept of Economy Rate differential (ERx) in the article, which is the average of player economy rate and innings run rate. There are couple of problems with this definition:
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+1. This definition doesn't take into account the number of balls the player bowled in a game
+2. The value of this statistics are very different than the traditional statistic (ER), so it could be hard to comprehend.
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+To bypass these problems I defined a Weighted Economy Rate (WER), where weights are based on the number of ball bowled by player and the overall run rate of the inning.
 
-```{r}
-plot(cars)
-```
+$$ \mbox{WER = 6.0 x sum(ER x balls x RR)/sum(balls x RR)} $$
+Lets see if this changes anything.
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
-
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).
-
-```{r, echo=FALSE}
+```{r read_data,echo=FALSE}
 library(data.table)
+library(knitr)
 events = read.csv('../CSV/events.csv',sep = ';',header = T)
 match_info = read.csv('../CSV/match_info.csv',sep = ';',header = T)
 match_info$season = substr(match_info$start_date,1,4)
@@ -24,21 +26,30 @@ events = merge(match_info[,c('match_id','season')]
                ,events
                ,by = 'match_id')
 ```
+
+The events data table has information about all deliveries for `r length(unique(events$match_id))` matches from past `r length(unique(events$season))` IPLs.
+
 ```{r}
 events = as.data.table(events)
-innings_summary = events[,list(total_balls = length(ball[!(extra_type %in%
+head(events)
+```
+
+We need run rate for all innings in order to get weighted economy rate.
+```{r}
+innings_summary = events[,list(match_balls = length(ball[!(extra_type %in%
                                                               c('wides'
                                                                 ,'noballs'))])
-                               ,total_runs = sum(total_runs)
-                               ,extra_runs = sum(extra_runs)
-                               ,wickets = length(out_type[out_type != 'none']))
+                               ,match_runs = sum(total_runs)
+                               ,match_extra_runs = sum(extra_runs)
+                               ,match_wickets = length(out_type[out_type != 'none']))
                          ,by="season,match_id,innings,batting_team,bowling_team"]
+kable(head(innings_summary))
+```
 
-batsman_summary = events[,list(runs = sum(batsman_runs)
-                               ,balls = length(ball[!(extra_type %in% c("wides","noballs"))])
-                               ,out = length(out_type[out_type != 'none'])
-                               ,in_over = min(over))
-                         ,by="season,match_id,innings,batting_team,bowling_team,batsman"]
+
+
+
+```{r}
 bowler_summary = events[,list(runs=sum(total_runs[!(extra_type %in% c("byes","legbyes"))])
                               ,balls=length(extra_type[!(extra_type %in% c('noballs','wides'))])
                               ,wickets=length(out_type[out_type%in%c('bowled'
@@ -48,15 +59,131 @@ bowler_summary = events[,list(runs=sum(total_runs[!(extra_type %in% c("byes","le
                                                                      ,'lbw'
                                                                      ,'stumped')]))
                         ,by="season,match_id,innings,batting_team,bowling_team,bowler"]
+bowler_summary = merge(bowler_summary
+                       ,innings_summary[,c('season'
+                                           ,'match_id'
+                                           ,'innings'
+                                           ,'match_balls'
+                                           ,'match_runs'
+                                           ,'match_wickets')]
+                       ,by = c('season','match_id','innings'))
+bowler_summary$inning_rr = 6*bowler_summary$match_runs/bowler_summary$match_balls
+bowler_summary$inning_sr = ifelse(bowler_summary$match_wickets > 0
+                                  ,bowler_summary$match_balls/ bowler_summary$match_wickets
+                                  ,0) # 0 is good for later computation
+bowler_eco_sr = bowler_summary[,list(matches=length(unique(match_id))
+                                     ,balls = sum(balls)
+                                     ,runs = sum(runs)
+                                     ,wickets = sum(wickets)
+                                     ,regular_eco=6.0*sum(runs)/sum(balls)
+                                      ,weighted_eco=6.0*sum(runs*inning_rr)/ sum(balls*inning_rr)
+                                      ,regular_sr=sum(balls)/sum(wickets)
+                                      ,weighted_sr=sum(balls*inning_sr)/ sum(wickets*inning_sr))
+                                ,by="season,bowler"]
+bowler_eco_sr = subset(bowler_eco_sr,balls > 60)
+bowler_eco_sr[,reg_rank:=rank(regular_eco,ties.method = "first")
+              ,by = "season"]
+bowler_eco_sr[,wt_rank:=rank(weighted_eco,ties.method = "first")
+              ,by = "season"]
+bowler_eco_sr = bowler_eco_sr[order(season,reg_rank,wt_rank)]
+```
 
-batsman_summary = merge(batsman_summary
-                        ,innings_summary[,c('season'
-                                            ,'match_id'
-                                            ,'innings'
-                                            ,'total_balls'
-                                            ,'total_runs'
-                                            ,'wickets')]
-                        ,by= c('season','match_id','innings'))
+### Season 2008
 
+```{r,echo=FALSE}
+kable(head(bowler_eco_sr[which(bowler_eco_sr$season == 2008),c("bowler"
+                                                         ,"balls"
+                                                          ,"regular_eco"
+                                                          ,"reg_rank"
+                                                          ,"weighted_eco"
+                                                          ,"wt_rank")],n = 10))
+```
+
+### Season 2009
+
+```{r,echo=FALSE}
+kable(head(bowler_eco_sr[which(bowler_eco_sr$season == 2009),c("bowler"
+                                                         ,"balls"
+                                                          ,"regular_eco"
+                                                          ,"reg_rank"
+                                                          ,"weighted_eco"
+                                                          ,"wt_rank")],n = 10))
+```
+
+### Season 2010
+
+```{r,echo=FALSE}
+kable(head(bowler_eco_sr[which(bowler_eco_sr$season == 2010),c("bowler"
+                                                         ,"balls"
+                                                          ,"regular_eco"
+                                                          ,"reg_rank"
+                                                          ,"weighted_eco"
+                                                          ,"wt_rank")],n = 10))
+```
+
+### Season 2011
+
+```{r,echo=FALSE}
+kable(head(bowler_eco_sr[which(bowler_eco_sr$season == 2011),c("bowler"
+                                                         ,"balls"
+                                                          ,"regular_eco"
+                                                          ,"reg_rank"
+                                                          ,"weighted_eco"
+                                                          ,"wt_rank")],n = 10))
+```
+
+### Season 2012
+
+```{r,echo=FALSE}
+kable(head(bowler_eco_sr[which(bowler_eco_sr$season == 2012),c("bowler"
+                                                         ,"balls"
+                                                          ,"regular_eco"
+                                                          ,"reg_rank"
+                                                          ,"weighted_eco"
+                                                          ,"wt_rank")],n = 10))
+```
+
+### Season 2013
+
+```{r,echo=FALSE}
+kable(head(bowler_eco_sr[which(bowler_eco_sr$season == 2013),c("bowler"
+                                                         ,"balls"
+                                                          ,"regular_eco"
+                                                          ,"reg_rank"
+                                                          ,"weighted_eco"
+                                                          ,"wt_rank")],n = 10))
+```
+
+### Season 2014
+
+```{r,echo=FALSE}
+kable(head(bowler_eco_sr[which(bowler_eco_sr$season == 2014),c("bowler"
+                                                         ,"balls"
+                                                          ,"regular_eco"
+                                                          ,"reg_rank"
+                                                          ,"weighted_eco"
+                                                          ,"wt_rank")],n = 10))
+```
+
+### Season 2015
+
+```{r,echo=FALSE}
+kable(head(bowler_eco_sr[which(bowler_eco_sr$season == 2015),c("bowler"
+                                                         ,"balls"
+                                                          ,"regular_eco"
+                                                          ,"reg_rank"
+                                                          ,"weighted_eco"
+                                                          ,"wt_rank")],n = 10))
+```
+
+### Season 2016
+
+```{r,echo=FALSE}
+kable(head(bowler_eco_sr[which(bowler_eco_sr$season == 2016),c("bowler"
+                                                         ,"balls"
+                                                          ,"regular_eco"
+                                                          ,"reg_rank"
+                                                          ,"weighted_eco"
+                                                          ,"wt_rank")],n = 10))
 ```
 
