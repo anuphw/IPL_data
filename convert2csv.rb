@@ -101,9 +101,16 @@ open("./CSV/events.csv",'a') do |f|
     bat_team = cur_inn["team"]
     bow_team = team1 if (team2 == bat_team)
     bow_team = team2 if (team1 == bat_team)
+    last_over_no = nil
     i = 0
     while (i < cur_inn["deliveries"].size) do
       key = cur_inn["deliveries"][i].keys[0]
+      over_no = key.floor
+      if over_no != last_over_no
+        last_over_no = over_no
+        ball_no = 0
+      end
+      ball_no = ball_no + 1
       extra_type = "none"
       if not cur_inn["deliveries"][i][key]["extras"].nil?
         extra_type = cur_inn["deliveries"][i][key]["extras"].keys[0] 
@@ -122,7 +129,7 @@ open("./CSV/events.csv",'a') do |f|
       x = cur_inn["deliveries"][i][key]
       j = 0
       while(j < out_fielder.size)
-        f.puts "#{match_id};#{innings};#{key};#{x["batsman"]};#{x["non_striker"]};#{bat_team};#{x["bowler"]};#{bow_team};#{x["runs"]["batsman"]};#{x["runs"]["extras"]};#{x["runs"]["total"]};#{extra_type};#{out_type};#{player_out};#{out_fielder[j]}"
+        f.puts "#{match_id};#{innings};#{over_no};#{ball_no};#{x["batsman"]};#{x["non_striker"]};#{bat_team};#{x["bowler"]};#{bow_team};#{x["runs"]["batsman"]};#{x["runs"]["extras"]};#{x["runs"]["total"]};#{extra_type};#{out_type};#{player_out};#{out_fielder[j]}"
         j = j+1
       end
     i = i+1
