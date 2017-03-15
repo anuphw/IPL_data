@@ -88,12 +88,8 @@ neutral_venue = data["info"]["neutral_venue"].nnil
 neutral_venue = 0 if data["info"]["neutral_venue"].nil?
 
 # puts "competition,match_id,start_date,end_date,match_type,city,venue,neutral_venue,team1,team2,umpire1,umpire2,toss_winner,decision,winner,win_type,margin,mom"
-j = 0
 open('./CSV/match_info.csv','a') do |f|
-  while(j < mom.size)
-    f.puts "#{competition};#{match_id};#{start_date};#{end_date};#{match_type};#{overs};#{city};#{venue};#{neutral_venue};#{team1};#{team2};#{umpire1};#{umpire2};#{toss_winner};#{decision};#{method};#{winner};#{win_innings};#{win_runs};#{win_wickets};#{mom[j].nnil}"
-    j = j + 1
-  end
+    f.puts "#{competition};#{match_id};#{start_date};#{end_date};#{match_type};#{overs};#{city};#{venue};#{neutral_venue};#{team1};#{team2};#{umpire1};#{umpire2};#{toss_winner};#{decision};#{method};#{winner};#{win_innings};#{win_runs};#{win_wickets};#{mom[0].nnil};#{mom[1].nnil}"
 end
 open("./CSV/events.csv",'a') do |f|
   while(innings < data["innings"].size)
@@ -125,13 +121,13 @@ open("./CSV/events.csv",'a') do |f|
         if not cur_inn["deliveries"][i][key]["wicket"]["fielders"].nil? # need to take special care of caught & bowled
           out_fielder = cur_inn["deliveries"][i][key]["wicket"]["fielders"] # recode for multiple
         end
+        if out_type == 'caught and bowled'
+          out_fielder = [cur_inn["deliveries"][i][key]["bowler"]]
+        end
       end
       x = cur_inn["deliveries"][i][key]
       j = 0
-      while(j < out_fielder.size)
-        f.puts "#{match_id};#{innings};#{over_no};#{ball_no};#{x["batsman"]};#{x["non_striker"]};#{bat_team};#{x["bowler"]};#{bow_team};#{x["runs"]["batsman"]};#{x["runs"]["extras"]};#{x["runs"]["total"]};#{extra_type};#{out_type};#{player_out};#{out_fielder[j]}"
-        j = j+1
-      end
+      f.puts "#{match_id};#{innings};#{over_no};#{ball_no};#{x["batsman"]};#{x["non_striker"]};#{bat_team};#{x["bowler"]};#{bow_team};#{x["runs"]["batsman"]};#{x["runs"]["extras"]};#{x["runs"]["total"]};#{extra_type};#{out_type};#{player_out};#{out_fielder[0].nnil};#{out_fielder[1].nnil}"
     i = i+1
     end
     innings = innings + 1
