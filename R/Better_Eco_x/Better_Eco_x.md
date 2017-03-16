@@ -27,18 +27,27 @@ are some problems with this definition:
 
 To bypass these problems I defined following economy rating definitions.
 
-1.  ER1: 6 x runs/balls,
+1.  ER1: 6 x runs/balls, This is the traditional definition of economy
+    rates that is average number of runs per over.
 2.  ER2: 6 x sum(runs\_i x rr\_i)/sum(balls\_i x rr\_i), where rr\_i is
-    run-rate of ith match,
-3.  ER3: 6 x runs/balls + sum(w\_i x (rr\_i - eco\_i)), where eco\_i is
-    economy rate of the bowler in ith match.
+    run-rate of ith match, This definition captures the context of each
+    game that bowler plays. It puts higher weight on the matches with
+    higher run rates.
+3.  ER3: ER1 + sum(w\_i x (rr\_i - eco\_i)), where eco\_i is economy
+    rate of the bowler in ith match. This definition has two components
+    the first component is ER1, that is the individual level of player
+    where as the second component tries to capture the context of
+    matches when bowler has bowled. The weights w\_i are proportional to
+    the number of balls bowled by the bowler in ith match.
 4.  R\_i is the ranking of players w.r.t. ERi statistics.
 
 I rank all players who have bowled at least 15 overs (60 balls) in a
 given season.
 
-The events data table has information about all deliveries for 577
-matches from past 9 IPLs.
+The data contains information about all deliveries for all the 577
+matches from past 9 IPL seasons.
+
+The resuls are as follows.
 
 ### Season 2008
 
